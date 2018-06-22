@@ -13,11 +13,14 @@ import hudson.tasks.Publisher;
 import hudson.util.FormValidation;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 
 import javax.servlet.ServletException;
 
 import net.sf.json.JSONObject;
+import nl.q42.jue.HueBridge;
 import nl.q42.jue.Light;
 
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -26,8 +29,8 @@ import org.kohsuke.stapler.StaplerRequest;
 
 
 public class LightNotifier extends Notifier {
-    private static final String FORM_KEY_BRIDGE_IP = "bridgeIp";
-    private static final String FORM_KEY_BRIDGE_USERNAME = "bridgeUsername";
+    public static final String FORM_KEY_BRIDGE_IP = "bridgeIp";
+    public static final String FORM_KEY_BRIDGE_USERNAME = "bridgeUsername";
     private static final String FORM_KEY_BLUE = "colorBlue";
     private static final String FORM_KEY_GREEN = "colorGreen";
     private static final String FORM_KEY_YELLOW = "colorYellow";
@@ -83,7 +86,7 @@ public class LightNotifier extends Notifier {
     public String getBadBuild() {
         return this.badBuild;
     }
-
+    
     @Override
     /**
      * CJA: Note that old prebuild using Build is deprecated. Now using AbstractBuild parameter.
@@ -91,12 +94,11 @@ public class LightNotifier extends Notifier {
     public boolean prebuild(AbstractBuild build, BuildListener listener) {
         // does not work in constructor...
         final DescriptorImpl descriptor = this.getDescriptor();
-
         this.lightController = new LightController(descriptor, listener.getLogger());
-        
         for(String id : this.lightId) {
 	        Light light = this.lightController.getLightForId(id);
-	        this.lightController.setPulseBreathe(light, "Build Starting", ConfigColorToHue(this.preBuild));
+	        HueBridge hueBridge = this.lightController.getHueBridgeById(id);
+	        this.lightController.setPulseBreathe(hueBridge, light, "Build Starting", ConfigColorToHue(this.preBuild));
         }
         return super.prebuild(build, listener);
     }
@@ -125,16 +127,16 @@ public class LightNotifier extends Notifier {
         
         for(String id : this.lightId) {
 	        Light light = this.lightController.getLightForId(id);
-	
+	        HueBridge hueBridge = this.lightController.getHueBridgeById(id);
 	        switch (ballcolor) {
 	            case RED:
-	                this.lightController.setColor(light, "Bad Build", ConfigColorToHue(this.badBuild));
+	                this.lightController.setColor(hueBridge, light, "Bad Build", ConfigColorToHue(this.badBuild));
 	                break;
 	            case YELLOW:
-	                this.lightController.setColor(light, "Unstable Build", ConfigColorToHue(this.unstableBuild));
+	                this.lightController.setColor(hueBridge, light, "Unstable Build", ConfigColorToHue(this.unstableBuild));
 	                break;
 	            case BLUE:
-	                this.lightController.setColor(light, "Good Build", ConfigColorToHue(this.goodBuild));
+	                this.lightController.setColor(hueBridge, light, "Good Build", ConfigColorToHue(this.goodBuild));
 	                break;
 	        }
         }
@@ -309,7 +311,7 @@ public class LightNotifier extends Notifier {
                 throws IOException, ServletException {
             if (value.length() == 0)
                 return FormValidation.error("Please set the hue value for green");
-            if (!this.isInteger(value))
+            if (!isInteger(value))
                 return FormValidation.error("Please enter a number");
             if (Integer.parseInt(value) < 0)
                 return FormValidation.error("Please enter a non-negative number");
@@ -400,6 +402,17 @@ public class LightNotifier extends Notifier {
 
             this.bridgeIp = formData.getString(FORM_KEY_BRIDGE_IP);
             this.bridgeUsername = formData.getString(FORM_KEY_BRIDGE_USERNAME);
+//            this.bridgeInfo = new HashSet<Map<String,String>>();
+//            if(bridgeIp != null) {
+//                String[] ips = this.bridgeIp.split(",");
+//                String[] usernames = this.bridgeUsername.split(",");
+//                for(int i = 0; i < ips.length;i++) {
+//                    Map<String, String> value = new HashMap<String, String>();
+//                    value.put(FORM_KEY_BRIDGE_IP, ips[i].trim());
+//                    value.put(FORM_KEY_BRIDGE_USERNAME, usernames[i].trim());
+//                    bridgeInfo.add(value);
+//                }
+//            }
             this.blue = formData.getString(FORM_KEY_BLUE);
             this.green = formData.getString(FORM_KEY_GREEN);
             this.yellow = formData.getString(FORM_KEY_YELLOW);
@@ -411,7 +424,7 @@ public class LightNotifier extends Notifier {
 
             return super.configure(req, formData);
         }
-
+        
         public String getBridgeIp() {
             return this.bridgeIp;
         }
