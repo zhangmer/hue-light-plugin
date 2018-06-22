@@ -273,10 +273,10 @@ public class LightNotifier extends Notifier {
             String[] lightIds = value.split(",");
             for(String id : lightIds) {
                 id = id.trim();
-    	        if (!isInteger(id))
-	                return FormValidation.error("Please enter positive integers only");
-	            if (Integer.parseInt(id) < 0)
-	                return FormValidation.error("Please enter non-negative numbers only");
+//    	        if (!isInteger(id))
+//	                return FormValidation.error("Please enter positive integers only");
+//	            if (Integer.parseInt(id) < 0)
+//	                return FormValidation.error("Please enter non-negative numbers only");
             }
             return FormValidation.ok();
         }
